@@ -1,0 +1,16 @@
+.Game {
+	display: flex;
+	height: 100vh;
+	flex-direction: column;
+}
+
+.Hand {
+	display: flex;
+	height: 40%;
+	margin: auto;
+}
+
+.Buttons {
+	display: flex;
+	justify-content: center;
+}
