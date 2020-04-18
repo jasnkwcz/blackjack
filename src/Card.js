@@ -1,14 +1,10 @@
-import React, { Component } from 'react';
+import React from "react";
 //import './Card.css';
 
-class Card extends Component {
-	render() {
-		return (
-			<div className="Card">
-				<img src={this.props.image} />
-			</div>
-		);
-	}
-}
+const Card = ({ image, value, suit }) => (
+  <div className="Card">
+    <img src={image} alt={`${value} ${suit}`} />
+  </div>
+);
 
 export default Card;
