@@ -5,33 +5,33 @@ import "./Game.css";
 import scoring from "./scoring";
 
 /**
- * PERHAPS STUFF TO DISCUSS
+ * TODOS
+ *
+ * 1. Prevent multiple sources-of-truth regarding "scores".
+ *    Scores should always be calculated based on the cards in hand, and not as separate state key.
+ *    We should create a function calculateHandScore() and move a few things around.
+ *
+ * 2. Practice writing tests with Jest.
+ *
+ * 3. More styling to make this even more slick.
+ *
+ * 4. Practice Redux
+ */
+
+/**
+ * STUFF TO DISCUSS
  *
  * 1. try/catch
  *
  * 2. async/await
  *
- * 3. rest operator
+ * 3. "rest operator"
  *
- * 4. spread operator
+ * 4. "spread operator"
  *
- * 5. object and array destructuring.
+ * 5. "destructuring" objects and arrays
  *
- * 6. avoid directly mutating references to this.state
- */
-
-/**
- * TODOS
- *
- * 1. Use arrow methods, instead of method binding.
- *
- * 2. Prevent multiple sources-of-truth regarding "scores".
- *    Scores should always be calculated based on the cards in hand, and not as separate state key.
- *    We should create a function calculateHandScore() and move a few things around.
- *
- * 3. Practice writing tests with Jest.
- *
- * 4. More styling to make this even more slick.
+ * 6. Only mutate this.state via this.setState()
  */
 
 const doGet = (...params) => axios.get(...params);
@@ -52,19 +52,17 @@ const getNextScore = (card, score) => {
 class Game extends Component {
   constructor(props) {
     super(props);
+
     this.state = {
-      error: null,
-      deckId: null,
       dealerHand: [],
       dealerScore: 0,
+      deckId: null,
+      error: null,
+      gameOver: false,
       playerHand: [],
       playerScore: 0,
       stayed: false,
-      gameOver: false,
     };
-
-    this.handleHit = this.handleHit.bind(this);
-    this.handleStay = this.handleStay.bind(this);
   }
 
   componentDidMount() {
@@ -80,9 +78,7 @@ class Game extends Component {
         "https://deckofcardsapi.com/api/deck/new/draw/?count=4"
       );
     } catch (error) {
-      this.setState({
-        error: "Game data failed to load 😞",
-      });
+      this.setState({ error: "Game data failed to load 😞" });
       return;
     }
 
@@ -102,7 +98,8 @@ class Game extends Component {
     });
   }
 
-  async hit() {
+  handleHit = async () => {
+    console.log("Hit!");
     const { playerHand, playerScore, deckId } = this.state;
 
     let response;
@@ -132,31 +129,24 @@ class Game extends Component {
       stayed: isGameOver,
       gameOver: isGameOver,
     });
-  }
+  };
 
-  handleHit(evt) {
-    evt.preventDefault();
-    console.log("Hit!");
-    this.hit();
-  }
+  handleStay = async () => {
+    console.log("Stay!");
+    const { deckId } = this.state;
 
-  async stay() {
-    const { deckId, dealerScore, dealerHand } = this.state;
+    await this.setState({ stayed: true });
 
-    let localHand = [...dealerHand];
-    let localScore = dealerScore;
-    console.log("before loop:", localScore);
+    while (this.playerIsWinning() && this.state.dealerScore < 21) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
-    while (this.didPlayerWin() && localScore < 21) {
       let response;
       try {
         response = await doGet(
           `https://deckofcardsapi.com/api/deck/${deckId}/draw/?count=1`
         );
       } catch (error) {
-        this.setState({
-          error: "Game data failed to load 😞",
-        });
+        this.setState({ error: "Game data failed to load 😞" });
         return;
       }
 
@@ -166,26 +156,16 @@ class Game extends Component {
         },
       } = response;
 
-      localHand = [...localHand, card0];
-      localScore = getNextScore(card0, localScore);
-      console.log("in loop:", localScore);
+      await this.setState({
+        dealerHand: [...this.state.dealerHand, card0],
+        dealerScore: getNextScore(card0, this.state.dealerScore),
+      });
     }
 
-    this.setState({
-      stayed: true,
-      gameOver: true,
-      dealerHand: localHand,
-      dealerScore: localScore,
-    });
-  }
+    this.setState({ gameOver: true });
+  };
 
-  handleStay(evt) {
-    evt.preventDefault();
-    console.log("Stay!");
-    this.stay();
-  }
-
-  didPlayerWin() {
+  playerIsWinning() {
     const { playerScore, dealerScore } = this.state;
     if (dealerScore > 21) return true;
     return playerScore > dealerScore && playerScore <= 21;
@@ -203,12 +183,14 @@ class Game extends Component {
     } = this.state;
 
     return error ? (
-      <h1>{error}</h1>
+      <div className="ErrorContainer">
+        <h1>{error}</h1>
+      </div>
     ) : (
       <div className="Game">
         <div className="Hand">
-          {dealerHand.map(({ image, value, suit }) => (
-            <Card key={image} {...{ image, value, suit }} />
+          {dealerHand.map((card) => (
+            <Card key={card.image} {...card} />
           ))}
         </div>
         <div>
@@ -217,20 +199,20 @@ class Game extends Component {
           <div className="GameStatus">
             {playerScore > 21 && <h1>BUST!</h1>}
             {gameOver && (
-              <h1>{this.didPlayerWin() ? `You win!` : `You lose!`}</h1>
+              <h1>{this.playerIsWinning() ? `You win!` : `You lose!`}</h1>
             )}
           </div>
         </div>
         <div className="Hand">
-          {playerHand.map(({ image, value, suit }) => (
-            <Card key={image} {...{ image, value, suit }} />
+          {playerHand.map((card) => (
+            <Card key={card.image} {...card} />
           ))}
         </div>
         <div className="Buttons">
-          <button disabled={stayed} onClick={this.handleHit}>
+          <button disabled={stayed} type="button" onClick={this.handleHit}>
             Hit
           </button>
-          <button disabled={stayed} onClick={this.handleStay}>
+          <button disabled={stayed} type="button" onClick={this.handleStay}>
             Stay
           </button>
         </div>
